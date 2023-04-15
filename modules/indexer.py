@@ -134,7 +134,7 @@ class SolrIndexer():
         cursor = self.db.cursor()
         cursor.execute(self.deltaImportCountQuery.replace("""{delta.last_index_time}""", self.deltaObj['delta']['last_index_time']))
         for obj in cursor.fetchall():
-            self.index(self.deltaImportQuery.replace("""{delta.item}""", obj[self.deltaItemKey]), 0)
+            self.index(self.deltaImportQuery.replace("""{delta.item}""", str(obj[self.deltaItemKey])), 0)
         self.solr.optimize()
         self.logdelta()
 
