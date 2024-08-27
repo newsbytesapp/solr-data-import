@@ -19,8 +19,9 @@ class SolrIndexer():
             self.logger.info('Please use setupSolr, setupDb, setFullImportQuery and setDeltaImportQuery funnctions.')
             raise Exception
         load_dotenv(dotenv_path=Path(configPath))
+        collection = os.getenv('SOLR_COLLECTION')
         self.setupSolr(
-            os.getenv('SOLR_COLLECTION'), 
+            collection, 
             os.getenv('SOLR_HOST'),
             os.getenv('SOLR_PORT'),
             int(os.getenv('SOLR_IMPORT_BATCHSIZE')),
@@ -41,7 +42,7 @@ class SolrIndexer():
             os.getenv('DELTA_IMPORT_COUNT_QUERY')
         )
         self.formatType = os.getenv('DATA_FORMAT_TYPE')
-        self.deltaFile = os.path.dirname(__file__) + '/../' +'delta.json'
+        self.deltaFile = os.path.dirname(__file__) + '/../' +'delta.' + collection + '.json'
         self.deltaObj = {
             'delta': {
                 'last_index_time': '',
@@ -80,6 +81,9 @@ class SolrIndexer():
     def format(self, obj: dict):
         """Format a passage for indexing"""
         if(self.formatType == 'article'):
+            if(type(obj['eventTimestamp']) == str):
+                self.logger.error(obj['timelineId'])
+                return {}
             body = {
                 'id': obj['id'],
                 'category': obj['category'],
@@ -113,6 +117,7 @@ class SolrIndexer():
         cursor = self.db.cursor()
         cursor.execute(query + (" limit {0},{1}".format(batchStart, self.batchsize)))
         act = [self.format(row) for row in cursor.fetchall()]
+        filtered_act = [d for d in act if bool(d)]
         self.solr.add(act)
 
     def clean(self):

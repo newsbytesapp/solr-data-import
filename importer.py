@@ -1,35 +1,41 @@
-
+#!/usr/bin/python3
 
 from modules.indexer import SolrIndexer
-from dotenv import load_dotenv, find_dotenv
+from dotenv import load_dotenv
 import os
 import argparse
 
+def main():
+    argParser = argparse.ArgumentParser(description="Solr Indexer Utility")
+    argParser.add_argument("-c", "--collection", help="The collection to index", required=True)
+    argParser.add_argument("-r", "--reindex", action='store_true', help="Reindex the collection")
+    argParser.add_argument("-e", "--empty", action='store_true', help="Empty or Clean the collection")
+    argParser.add_argument("-f", "--configfile", help="Custom config file for the collection")
 
-# if os.path.exists(os.path.dirname(__file__)+'/.env') == False:
-# if os.path.exists(find_dotenv()) == False:
-# 	print('Please add system .env file')
-# 	exit()
+    args = argParser.parse_args()
 
-# load_dotenv(find_dotenv())
+    # Determine the configuration file path
+    if args.configfile:
+        configfile = args.configfile
+    else:
+        configfile = os.path.join(os.path.dirname(__file__), f'.env.{args.collection}')
 
-argParser = argparse.ArgumentParser()
-argParser.add_argument("-c", "--collection", help="The collection to index")
-argParser.add_argument("-r", "--reindex", help="Reindex the collection")
-argParser.add_argument("-e", "--empty", help="Empty or Clean the collection")
-argParser.add_argument("-f", "--configfile", help="Custom config file for the collection")
+    if not os.path.exists(configfile):
+        print(f'Please add {configfile} file')
+        exit()
 
-args = argParser.parse_args()
+    # Load the environment variables from the configuration file
+    load_dotenv(configfile)
 
-configfile = os.path.dirname(__file__)+'/.env.%s' % args.collection
-if(args.configfile is not None):
-	configfile = args.configfile
+    indexer = SolrIndexer(True)
+    indexer.setup(configfile)
 
-if os.path.exists(configfile) == False:
-	print('Please add %s file' % configfile)
-	exit()
+    if args.reindex:
+        indexer.all()  # Re-upload all documents to solr
+    elif args.empty:
+        indexer.clean()  # Clean the collection
+    else:
+        indexer.delta()  # Delta upload of documents to solr
 
-# runconfigs = os.getenv('CONFIGS_TO_RUN').split(',')
-indexer = SolrIndexer(True)
-indexer.setup(configfile)
-indexer.delta()
+if __name__ == "__main__":
+    main()
